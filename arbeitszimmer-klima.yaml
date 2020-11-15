@@ -1,0 +1,112 @@
+esphome:
+  name: arbeitszimmerklima
+  platform: ESP8266
+  board: d1_mini
+  on_boot:
+    - switch.turn_off: onboardled
+
+wifi:
+  ssid: "add your own ssid"
+  password: "add your own password"
+  reboot_timeout: 18000s
+  manual_ip:
+    static_ip: 192.168.xx.yyy
+    gateway: 192.168.16.1
+    subnet: 255.255.255.0
+    dns1: 192.168.16.1
+    dns2: 8.8.8.8
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Arbeitszimmerklima"
+    password: "0DdCkdYrhZqp"
+
+mqtt:
+  broker: 192.168.16.42
+  username: lancremqttuser
+  password: NjQ2MWZj
+  discovery: True
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  reboot_timeout: 18000s
+
+ota:
+
+i2c:
+  sda: D2
+  scl: D1
+  scan: False
+
+switch:
+  - platform: gpio
+    pin: GPIO2
+    name: "Wemos LED"
+    id: onboardled
+    inverted: true
+
+
+sensor:
+  - platform: bme280
+    temperature:
+      name: "Arbeitszimmer Temperatur"
+      id: temperature
+      oversampling: 16x
+    pressure:
+      name: "Arbeitszimmer Luftdruck"
+      id: pressure
+    humidity:
+      name: "Arbeitszimmer Luftfeuchtigkeit"
+      id: humidity
+    address: 0x76
+    update_interval: 300s
+
+  - platform: adc
+    pin: A0
+    id: battery
+    name: "Arbeitszimmer Klima Battery"
+    update_interval: 600s
+    unit_of_measurement: "%"
+    filters:
+      - lambda: |-
+          if (x >= 0) return ((x*4.2) - 3.2)*100.0;
+          else return 0;
+
+
+time:
+  - platform: sntp
+    id: sntp_time
+
+font:
+  - file: "OpenSansBold.ttf"
+    id: my_font
+    size: 20
+  - file: "OpenSansBold.ttf"
+    id: my_font_b
+    size: 30
+
+spi:
+  clk_pin: D5
+  mosi_pin: D7
+
+display:
+  - platform: waveshare_epaper
+    cs_pin: D8
+    dc_pin: D0
+    busy_pin: D6
+    reset_pin: D3
+    model: 1.54in
+    update_interval: 60s
+    full_update_every: 60
+    rotation: 90
+    lambda: |-
+      if (id(battery).state >= 0) it.printf(10, 20, id(my_font), "Schreibtisch %.0f%%", id(battery).state);
+      else it.printf(10, 20, id(my_font), "Schreibtisch %.0f%%", 0.0);
+      it.strftime(10, 40, id(my_font),  "%H:%M %d.%m.%y", id(sntp_time).now());
+      it.printf(10, 90, id(my_font_b), "T: %.0f°C", id(temperature).state);
+      it.printf(10, 130, id(my_font_b), "H: %.0f%%", id(humidity).state);
+      it.printf(10, 170, id(my_font_b), "P: %.0f mbar", id(pressure).state);
